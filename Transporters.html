@@ -1,0 +1,615 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Fasal-Net — Find a transporter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --board:#202B22;
+    --board-deep:#161F19;
+    --board-line:#3A4A3C;
+    --chalk-gold:#E8D3A0;
+    --chalk-gold-dim:#c7b384;
+    --chalk-green:#9DBE8C;
+    --paper:#F3EEE0;
+    --paper-dark:#e8e0c9;
+    --ink:#2B241B;
+    --ink-soft:#6b6250;
+    --stamp-red:#a8402e;
+    --stamp-green:#3f6b4a;
+    --error:#a8402e;
+    --radius:3px;
+    --font-display:'Bricolage Grotesque', system-ui, sans-serif;
+    --font-serif:'Source Serif 4', Georgia, serif;
+    --font-mono:'IBM Plex Mono', ui-monospace, monospace;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{ margin:0; background:var(--paper); font-family:var(--font-serif); color:var(--ink); -webkit-font-smoothing:antialiased;}
+  a{color:inherit;}
+  ::selection{background:var(--chalk-gold); color:var(--board-deep);}
+  :focus-visible{ outline:2px solid var(--stamp-green); outline-offset:2px; }
+  button{ font-family:inherit; }
+
+  /* ============ HEADER (board strip) ============ */
+  header.top{
+    background:
+      repeating-linear-gradient(0deg, var(--board-deep) 0px, var(--board-deep) 2px, var(--board) 2px, var(--board) 4px),
+      var(--board);
+    padding:26px 20px 60px;
+    border-bottom:8px solid var(--paper-dark);
+  }
+  .top-inner{ max-width:1080px; margin:0 auto; }
+  .brand-row{ display:flex; align-items:center; justify-content:space-between; margin-bottom:34px; flex-wrap:wrap; gap:12px;}
+  .brand{ display:flex; align-items:center; gap:10px; text-decoration:none; }
+  .brand-mark{width:26px;height:26px;flex-shrink:0;}
+  .brand-name{ font-family:var(--font-mono); letter-spacing:0.14em; font-size:12.5px; color:var(--chalk-gold-dim); text-transform:uppercase; }
+  .back-link{
+    font-family:var(--font-mono); font-size:12px; letter-spacing:0.04em; text-transform:uppercase;
+    color:var(--chalk-green); text-decoration:none; border-bottom:1px dashed var(--chalk-green); padding-bottom:2px;
+  }
+  .back-link:hover{ color:var(--chalk-gold); border-color:var(--chalk-gold); }
+
+  h1.headline{
+    font-family:var(--font-display); font-weight:800; color:var(--paper);
+    font-size:clamp(28px, 4.4vw, 44px); line-height:1.05; letter-spacing:-0.01em; margin:0 0 10px;
+  }
+  h1.headline .accent{ color:var(--chalk-gold); }
+  p.sub{ font-family:var(--font-serif); color:var(--chalk-green); font-size:clamp(14.5px, 1.8vw, 17px); max-width:52ch; line-height:1.55; margin:0; }
+
+  /* ============ FILTER BAR ============ */
+  .filter-bar{
+    max-width:1080px;
+    margin:-32px auto 0;
+    padding:0 20px;
+    position:relative;
+    z-index:2;
+  }
+  .filter-card{
+    background:#fff;
+    border:1px solid var(--paper-dark);
+    border-radius:2px;
+    padding:18px 20px;
+    display:grid;
+    grid-template-columns:1.4fr 1fr 1fr auto;
+    gap:14px;
+    align-items:end;
+    box-shadow:0 18px 40px -30px rgba(43,36,27,0.5);
+  }
+  .filter-field{ display:flex; flex-direction:column; gap:6px; }
+  .filter-field label{
+    font-family:var(--font-mono); font-size:10.5px; letter-spacing:0.06em; text-transform:uppercase; color:var(--ink-soft);
+  }
+  .filter-field input, .filter-field select{
+    font-family:var(--font-serif); font-size:14.5px; padding:10px 11px;
+    border:1px solid #d8d0ba; border-radius:var(--radius); background:#fffdf8; color:var(--ink); width:100%;
+  }
+  .filter-field input:focus, .filter-field select:focus{
+    border-color:var(--stamp-green); box-shadow:0 0 0 3px rgba(63,107,74,0.12);
+  }
+  .clear-btn{
+    font-family:var(--font-mono); font-size:12px; background:none; border:1px solid var(--ink-soft); color:var(--ink-soft);
+    padding:10px 14px; border-radius:var(--radius); cursor:pointer; white-space:nowrap;
+  }
+  .clear-btn:hover{ border-color:var(--ink); color:var(--ink); }
+
+  @media (max-width:760px){
+    .filter-card{ grid-template-columns:1fr 1fr; }
+    .filter-card .clear-btn{ grid-column:1 / -1; }
+  }
+
+  /* ============ RESULTS ============ */
+  main{ max-width:1080px; margin:0 auto; padding:36px 20px 90px; }
+  .results-head{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:20px; flex-wrap:wrap; gap:8px;}
+  .results-count{ font-family:var(--font-mono); font-size:12.5px; color:var(--ink-soft); letter-spacing:0.03em; }
+  .sort-row{ display:flex; align-items:center; gap:8px; font-family:var(--font-mono); font-size:12px; color:var(--ink-soft); }
+  .sort-row select{ font-family:var(--font-mono); font-size:12px; padding:6px 8px; border:1px solid #d8d0ba; border-radius:var(--radius); background:#fffdf8; }
+
+  .grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:18px; }
+
+  .card{
+    background:#fff; border:1px solid var(--paper-dark); border-radius:2px;
+    padding:20px 20px 18px; position:relative; display:flex; flex-direction:column; gap:10px;
+    box-shadow:0 1px 0 var(--paper-dark);
+  }
+  .card::before{
+    content:""; position:absolute; top:0; left:0; right:0; height:5px;
+    background-image:repeating-linear-gradient(90deg, transparent 0 6px, var(--paper) 6px 14px);
+    background-size:20px 5px;
+  }
+  .card-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+  .card-name{ font-family:var(--font-display); font-weight:800; font-size:18px; margin:0; line-height:1.2; }
+  .card-loc{ font-size:13.5px; color:var(--ink-soft); margin:2px 0 0; }
+  .verified-tag{
+    flex-shrink:0; background:var(--stamp-red); color:var(--paper); font-family:var(--font-mono);
+    font-size:9.5px; letter-spacing:0.08em; text-transform:uppercase; padding:3px 7px; border-radius:2px; transform:rotate(3deg);
+  }
+  .price-block{
+    font-family:var(--font-mono); background:#fbf7ec; border:1px dashed #ddd4bd; border-radius:var(--radius);
+    padding:10px 12px; display:flex; justify-content:space-between; align-items:baseline;
+  }
+  .price-label{ font-size:11px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:0.05em; }
+  .price-value{ font-size:17px; font-weight:600; color:var(--stamp-green); }
+
+  .card-actions{ display:flex; gap:8px; margin-top:4px; flex-wrap:wrap; }
+  .btn{
+    font-family:var(--font-mono); font-size:12px; letter-spacing:0.03em; border-radius:var(--radius);
+    padding:9px 12px; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:6px; border:1px solid transparent;
+  }
+  .btn svg{ width:14px; height:14px; }
+  .btn-primary{ background:var(--paper); color:var(--stamp-red); border-color:var(--stamp-red); flex:1; justify-content:center; font-weight:600; text-transform:uppercase;}
+  .btn-primary:hover{ background:rgba(168,64,46,0.06); }
+  .btn-secondary{ background:#fff; color:var(--stamp-green); border-color:var(--stamp-green); }
+  .btn-secondary:hover{ background:rgba(63,107,74,0.07); }
+
+  /* ---- loading skeleton ---- */
+  .skeleton{ background:#fff; border:1px solid var(--paper-dark); border-radius:2px; padding:20px; height:172px; position:relative; overflow:hidden;}
+  .skeleton::after{
+    content:""; position:absolute; inset:0;
+    background:linear-gradient(100deg, transparent 30%, rgba(232,224,201,0.7) 50%, transparent 70%);
+    background-size:200% 100%; animation:shimmer 1.3s infinite;
+  }
+  @keyframes shimmer{ from{ background-position:200% 0; } to{ background-position:-200% 0; } }
+  @media (prefers-reduced-motion:reduce){ .skeleton::after{ animation:none; } }
+
+  /* ---- empty / error state ---- */
+  .state-card{
+    grid-column:1 / -1; text-align:center; padding:60px 20px; color:var(--ink-soft);
+    border:1px dashed #d8d0ba; border-radius:var(--radius);
+  }
+  .state-card h3{ font-family:var(--font-display); color:var(--ink); margin:0 0 8px; font-size:19px; }
+  .state-card p{ margin:0 0 16px; font-size:14px; }
+  .state-card button{
+    font-family:var(--font-mono); font-size:12.5px; background:none; border:1px solid var(--stamp-green);
+    color:var(--stamp-green); padding:9px 16px; border-radius:var(--radius); cursor:pointer;
+  }
+
+  /* ============ CONTACT DRAWER / MODAL ============ */
+  .overlay{
+    position:fixed; inset:0; background:rgba(22,31,25,0.55); display:none; align-items:flex-end; justify-content:center; z-index:50; padding:0;
+  }
+  .overlay.open{ display:flex; }
+  @media (min-width:640px){ .overlay{ align-items:center; padding:20px; } }
+
+  .drawer{
+    background:var(--paper); width:100%; max-width:520px; max-height:92vh; overflow-y:auto;
+    border-radius:8px 8px 0 0; padding:26px 22px 30px; position:relative;
+    box-shadow:0 -10px 40px rgba(0,0,0,0.3);
+  }
+  @media (min-width:640px){ .drawer{ border-radius:6px; padding:30px 30px 32px; } }
+  .drawer::before{
+    content:""; position:absolute; top:0; left:0; right:0; height:5px;
+    background-image:repeating-linear-gradient(90deg, transparent 0 6px, var(--paper) 6px 14px);
+    background-size:20px 5px;
+  }
+  .drawer-close{
+    position:absolute; top:14px; right:16px; background:none; border:none; font-size:22px; color:var(--ink-soft); cursor:pointer; line-height:1;
+  }
+  .drawer-close:hover{ color:var(--ink); }
+  .drawer-title{ font-family:var(--font-display); font-weight:800; font-size:22px; margin:6px 0 2px; }
+  .drawer-sub{ color:var(--ink-soft); font-size:13.5px; margin:0 0 20px; }
+
+  .quick-actions{ display:flex; gap:10px; margin-bottom:22px; flex-wrap:wrap; }
+  .quick-actions .btn{ padding:11px 16px; font-size:12.5px; }
+
+  .divider{ display:flex; align-items:center; gap:10px; color:var(--ink-soft); font-family:var(--font-mono); font-size:11px; text-transform:uppercase; letter-spacing:0.06em; margin:4px 0 18px;}
+  .divider::before, .divider::after{ content:""; height:1px; background:#ddd4bd; flex:1; }
+
+  .drawer form .field{ display:flex; flex-direction:column; gap:6px; margin-bottom:14px; }
+  .drawer label{ font-family:var(--font-mono); font-size:11px; letter-spacing:0.05em; text-transform:uppercase; color:var(--ink-soft); }
+  .drawer input, .drawer select, .drawer textarea{
+    font-family:var(--font-serif); font-size:15px; padding:10px 11px; border:1px solid #d8d0ba; border-radius:var(--radius); background:#fffdf8; color:var(--ink); width:100%;
+  }
+  .drawer textarea{ resize:vertical; min-height:64px; }
+  .drawer input:focus, .drawer select:focus, .drawer textarea:focus{ border-color:var(--stamp-green); box-shadow:0 0 0 3px rgba(63,107,74,0.12); }
+  .drawer .field-row{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  @media (max-width:420px){ .drawer .field-row{ grid-template-columns:1fr; } }
+  .error-text{ font-size:11.5px; color:var(--error); font-family:var(--font-mono); display:none; }
+  .field.has-error .error-text{ display:block; }
+  .field.has-error input, .field.has-error textarea{ border-color:var(--error); }
+
+  .stamp-btn{
+    font-family:var(--font-mono); font-weight:600; letter-spacing:0.06em; text-transform:uppercase; font-size:13px;
+    background:var(--paper); color:var(--stamp-red); border:2px solid var(--stamp-red); border-radius:4px;
+    padding:13px 24px; cursor:pointer; width:100%; margin-top:6px; transition:transform 0.08s ease;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+  }
+  .stamp-btn:hover{ background:rgba(168,64,46,0.06); }
+  .stamp-btn:disabled{ opacity:0.55; cursor:progress; }
+  .stamp-btn.stamping{ transform:scale(0.96); }
+  .stamp-btn .spinner{ display:none; width:13px;height:13px; border:2px solid var(--stamp-red); border-top-color:transparent; border-radius:50%; animation:spin 0.7s linear infinite; }
+  .stamp-btn.loading .spinner{ display:inline-block; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+
+  .drawer-banner{ margin-top:14px; padding:12px 14px; border-radius:var(--radius); font-size:13.5px; display:none; }
+  .drawer-banner.show{ display:block; }
+  .drawer-banner.success{ background:rgba(63,107,74,0.09); border:1px solid var(--stamp-green); color:var(--stamp-green); }
+  .drawer-banner.error{ background:rgba(168,64,46,0.08); border:1px solid var(--error); color:var(--error); }
+  .drawer-banner strong{ display:block; font-family:var(--font-mono); font-size:10.5px; letter-spacing:0.05em; text-transform:uppercase; margin-bottom:3px;}
+
+  footer{ text-align:center; padding:26px 20px 40px; color:var(--ink-soft); font-family:var(--font-mono); font-size:11.5px; }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand-row">
+      <a class="brand" href="home.html">
+        <svg class="brand-mark" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 2C10 6 7 8 7 12a5 5 0 0010 0c0-4-3-6-5-10z" stroke="#E8D3A0" stroke-width="1.3"/>
+          <path d="M12 22V12" stroke="#9DBE8C" stroke-width="1.3"/>
+        </svg>
+        <span class="brand-name">Fasal-Net</span>
+      </a>
+      <a class="back-link" href="index.html">← Register a field or vehicle</a>
+      <a class="back-link" href="insights.html">Check prices &amp; crop fit →</a>
+    </div>
+    <h1 class="headline">Find a <span class="accent">transporter.</span></h1>
+    <p class="sub">Every listing here has registered a floor price on the ledger. Contact one directly, or send a request with your crop and quantity.</p>
+  </div>
+</header>
+
+<div class="filter-bar">
+  <div class="filter-card">
+    <div class="filter-field">
+      <label for="filter-location">Location</label>
+      <input type="text" id="filter-location" placeholder="e.g. Hisar, Barwala…" />
+    </div>
+    <div class="filter-field">
+      <label for="filter-price">Max price (₹/tonne)</label>
+      <input type="number" id="filter-price" min="0" placeholder="Any" />
+    </div>
+    <div class="filter-field">
+      <label for="filter-sort">Sort by</label>
+      <select id="filter-sort">
+        <option value="price-asc">Price: low to high</option>
+        <option value="price-desc">Price: high to low</option>
+        <option value="name-asc">Name: A–Z</option>
+      </select>
+    </div>
+    <button type="button" class="clear-btn" id="clearFilters">Clear</button>
+  </div>
+</div>
+
+<main>
+  <div class="results-head">
+    <span class="results-count" id="resultsCount">Loading transporters…</span>
+  </div>
+  <div class="grid" id="grid"></div>
+</main>
+
+<footer>Fasal-Net · formal transactions, standardised units, verified rates</footer>
+
+<!-- ============ CONTACT DRAWER ============ -->
+<div class="overlay" id="overlay">
+  <div class="drawer" role="dialog" aria-modal="true" aria-labelledby="drawerTitle">
+    <button class="drawer-close" id="drawerClose" aria-label="Close">×</button>
+    <h2 class="drawer-title" id="drawerTitle">Contact transporter</h2>
+    <p class="drawer-sub" id="drawerSub"></p>
+
+    <div class="quick-actions">
+      <a class="btn btn-secondary" id="callLink" href="#">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M4 4h4l2 5-2.5 1.5a12 12 0 006 6L15 14l5 2v4a2 2 0 01-2 2C9.5 22 2 14.5 2 6a2 2 0 012-2z" stroke="currentColor" stroke-width="1.4"/></svg>
+        Call
+      </a>
+      <a class="btn btn-secondary" id="whatsappLink" href="#" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M3 21l1.5-4.5A8 8 0 1112 20a8 8 0 01-4.5-1.5L3 21z" stroke="currentColor" stroke-width="1.4"/></svg>
+        WhatsApp
+      </a>
+    </div>
+
+    <div class="divider">or send a request</div>
+
+    <form id="requestForm" novalidate>
+      <input type="hidden" id="req-transporter-id" />
+      <div class="field-row">
+        <div class="field">
+          <label for="req-name">Your name</label>
+          <input type="text" id="req-name" required />
+          <span class="error-text">Enter your name.</span>
+        </div>
+        <div class="field">
+          <label for="req-contact">Your contact number</label>
+          <input type="tel" id="req-contact" inputmode="numeric" pattern="[6-9][0-9]{9}" placeholder="98765 43210" required />
+          <span class="error-text">Enter a valid 10-digit mobile number.</span>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="req-crop">Crop</label>
+          <input type="text" id="req-crop" placeholder="e.g. Wheat" required />
+          <span class="error-text">Enter the crop.</span>
+        </div>
+        <div class="field">
+          <label for="req-qty">Quantity (tonnes)</label>
+          <input type="number" id="req-qty" min="0" step="0.1" required />
+          <span class="error-text">Enter a quantity.</span>
+        </div>
+      </div>
+      <div class="field">
+        <label for="req-message">Message <span style="text-transform:none;font-weight:400;">(optional)</span></label>
+        <textarea id="req-message" placeholder="Pickup date, location details, anything else…"></textarea>
+      </div>
+
+      <button type="submit" class="stamp-btn" id="requestSubmit">
+        <span class="spinner"></span><span>Send request</span>
+      </button>
+      <div class="drawer-banner success" id="requestSuccess" role="status"></div>
+      <div class="drawer-banner error" id="requestError" role="alert"></div>
+    </form>
+  </div>
+</div>
+
+<script>
+/* =========================================================================
+   BACKEND CONFIG — same pattern as index.html
+   ========================================================================= */
+const API_BASE_URL = "/api";
+const DEMO_MODE = false; // real Flask + database backend is wired up below
+
+const ENDPOINTS = {
+  transporterList: `${API_BASE_URL}/transporters`,
+  contactRequest: (transporterId) => `${API_BASE_URL}/transporters/${transporterId}/requests`,
+};
+
+/* demo data used only while DEMO_MODE is true */
+const DEMO_TRANSPORTERS = [
+  { id:"t1", name:"Suresh Transport Co.", location:"Hisar, Haryana", contact:"9123456780", minPricePerTonne:1800 },
+  { id:"t2", name:"Bhandari Carriers",    location:"Barwala, Hisar", contact:"9988776655", minPricePerTonne:1650 },
+  { id:"t3", name:"Om Sai Roadways",      location:"Sirsa, Haryana", contact:"9871234560", minPricePerTonne:2000 },
+  { id:"t4", name:"Kisan Freight Line",   location:"Hisar, Haryana", contact:"9012345678", minPricePerTonne:1720 },
+  { id:"t5", name:"Rathi Logistics",      location:"Fatehabad, Haryana", contact:"9345612780", minPricePerTonne:1900 },
+  { id:"t6", name:"Malik Transport",      location:"Barwala, Hisar", contact:"9765432109", minPricePerTonne:1580 },
+];
+
+/* ---------------------------- API helpers ------------------------------ */
+async function getJSON(url){
+  if (DEMO_MODE){
+    await new Promise(r => setTimeout(r, 700));
+    return DEMO_TRANSPORTERS;
+  }
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Server responded ${res.status}`);
+  return res.json();
+}
+async function postJSON(url, payload){
+  if (DEMO_MODE){
+    await new Promise(r => setTimeout(r, 800));
+    if (Math.random() < 0.04) throw new Error("Simulated network error");
+    return { ok:true, id:"demo-" + Math.random().toString(36).slice(2,9) };
+  }
+  const res = await fetch(url, {
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify(payload),
+  });
+  let data = null;
+  try { data = await res.json(); } catch(e) {}
+  if (!res.ok){
+    const msg = (data && (data.message || data.error)) || `Server responded ${res.status}`;
+    throw new Error(msg);
+  }
+  return data;
+}
+
+/* ------------------------------ State ----------------------------------- */
+let allTransporters = [];
+let filtered = [];
+
+const grid = document.getElementById("grid");
+const resultsCount = document.getElementById("resultsCount");
+const filterLocation = document.getElementById("filter-location");
+const filterPrice = document.getElementById("filter-price");
+const filterSort = document.getElementById("filter-sort");
+
+function renderSkeletons(n=6){
+  grid.innerHTML = Array.from({length:n}).map(() => `<div class="skeleton"></div>`).join("");
+}
+
+function renderEmptyState(message, showRetry){
+  grid.innerHTML = `
+    <div class="state-card">
+      <h3>No transporters found</h3>
+      <p>${message}</p>
+      ${showRetry ? `<button id="retryBtn">Try again</button>` : ""}
+    </div>`;
+  if (showRetry){
+    document.getElementById("retryBtn").addEventListener("click", loadTransporters);
+  }
+}
+
+function svgIconCall(){
+  return `<svg viewBox="0 0 24 24" fill="none"><path d="M4 4h4l2 5-2.5 1.5a12 12 0 006 6L15 14l5 2v4a2 2 0 01-2 2C9.5 22 2 14.5 2 6a2 2 0 012-2z" stroke="currentColor" stroke-width="1.4"/></svg>`;
+}
+
+function renderCards(list){
+  if (list.length === 0){
+    renderEmptyState("Try a broader location or a higher max price.", false);
+    return;
+  }
+  grid.innerHTML = list.map(t => `
+    <article class="card">
+      <div class="card-top">
+        <div>
+          <h3 class="card-name">${escapeHtml(t.name)}</h3>
+          <p class="card-loc">${escapeHtml(t.location)}</p>
+        </div>
+        <span class="verified-tag">Verified</span>
+      </div>
+      <div class="price-block">
+        <span class="price-label">Min. price</span>
+        <span class="price-value">₹${t.minPricePerTonne.toLocaleString("en-IN")} / tonne</span>
+      </div>
+      <div class="card-actions">
+        <button class="btn btn-primary" data-contact="${t.id}">${svgIconCall()} Contact</button>
+      </div>
+    </article>
+  `).join("");
+
+  grid.querySelectorAll("[data-contact]").forEach(btn => {
+    btn.addEventListener("click", () => openDrawer(btn.dataset.contact));
+  });
+}
+
+function escapeHtml(str){
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function applyFiltersAndSort(){
+  const locQuery = filterLocation.value.trim().toLowerCase();
+  const maxPrice = filterPrice.value ? Number(filterPrice.value) : null;
+
+  filtered = allTransporters.filter(t => {
+    const matchesLocation = !locQuery || t.location.toLowerCase().includes(locQuery);
+    const matchesPrice = maxPrice === null || t.minPricePerTonne <= maxPrice;
+    return matchesLocation && matchesPrice;
+  });
+
+  const sortVal = filterSort.value;
+  filtered.sort((a,b) => {
+    if (sortVal === "price-asc") return a.minPricePerTonne - b.minPricePerTonne;
+    if (sortVal === "price-desc") return b.minPricePerTonne - a.minPricePerTonne;
+    if (sortVal === "name-asc") return a.name.localeCompare(b.name);
+    return 0;
+  });
+
+  resultsCount.textContent = `${filtered.length} transporter${filtered.length === 1 ? "" : "s"} listed`;
+  renderCards(filtered);
+}
+
+async function loadTransporters(){
+  renderSkeletons();
+  resultsCount.textContent = "Loading transporters…";
+  try {
+    allTransporters = await getJSON(ENDPOINTS.transporterList);
+    applyFiltersAndSort();
+  } catch (err) {
+    resultsCount.textContent = "";
+    renderEmptyState("Couldn't reach the server. Check your connection and try again.", true);
+  }
+}
+
+filterLocation.addEventListener("input", debounce(applyFiltersAndSort, 200));
+filterPrice.addEventListener("input", debounce(applyFiltersAndSort, 200));
+filterSort.addEventListener("change", applyFiltersAndSort);
+document.getElementById("clearFilters").addEventListener("click", () => {
+  filterLocation.value = "";
+  filterPrice.value = "";
+  filterSort.value = "price-asc";
+  applyFiltersAndSort();
+});
+
+function debounce(fn, delay){
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), delay);
+  };
+}
+
+/* ---------------------------- Contact drawer ----------------------------- */
+const overlay = document.getElementById("overlay");
+const drawerTitle = document.getElementById("drawerTitle");
+const drawerSub = document.getElementById("drawerSub");
+const callLink = document.getElementById("callLink");
+const whatsappLink = document.getElementById("whatsappLink");
+const reqTransporterId = document.getElementById("req-transporter-id");
+const requestForm = document.getElementById("requestForm");
+const requestSubmit = document.getElementById("requestSubmit");
+const requestSuccess = document.getElementById("requestSuccess");
+const requestError = document.getElementById("requestError");
+
+function openDrawer(transporterId){
+  const t = allTransporters.find(x => x.id === transporterId);
+  if (!t) return;
+
+  reqTransporterId.value = t.id;
+  drawerTitle.textContent = t.name;
+  drawerSub.textContent = `${t.location} · ₹${t.minPricePerTonne.toLocaleString("en-IN")} / tonne`;
+  callLink.href = `tel:${t.contact}`;
+  whatsappLink.href = `https://wa.me/91${t.contact}?text=${encodeURIComponent(`Hi ${t.name}, I found you on Fasal-Net and have a crop to move.`)}`;
+
+  requestForm.reset();
+  reqTransporterId.value = t.id;
+  hideDrawerBanners();
+  clearDrawerErrors();
+
+  overlay.classList.add("open");
+  document.body.style.overflow = "hidden";
+  document.getElementById("req-name").focus();
+}
+
+function closeDrawer(){
+  overlay.classList.remove("open");
+  document.body.style.overflow = "";
+}
+document.getElementById("drawerClose").addEventListener("click", closeDrawer);
+overlay.addEventListener("click", (e) => { if (e.target === overlay) closeDrawer(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && overlay.classList.contains("open")) closeDrawer(); });
+
+function hideDrawerBanners(){ requestSuccess.classList.remove("show"); requestError.classList.remove("show"); }
+function clearDrawerErrors(){
+  requestForm.querySelectorAll(".field").forEach(f => f.classList.remove("has-error"));
+}
+function showDrawerBanner(el, title, message){
+  el.innerHTML = `<strong>${title}</strong>${message}`;
+  el.classList.add("show");
+}
+
+requestForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  hideDrawerBanners();
+
+  const nameInput = document.getElementById("req-name");
+  const contactInput = document.getElementById("req-contact");
+  const cropInput = document.getElementById("req-crop");
+  const qtyInput = document.getElementById("req-qty");
+
+  let valid = true;
+  [nameInput, contactInput, cropInput, qtyInput].forEach(input => {
+    const ok = input.checkValidity() && input.value.trim() !== "";
+    input.closest(".field").classList.toggle("has-error", !ok);
+    if (!ok) valid = false;
+  });
+
+  if (!valid){
+    showDrawerBanner(requestError, "Check the form", "A few details are missing or don't look right.");
+    return;
+  }
+
+  const payload = {
+    farmerName: nameInput.value.trim(),
+    farmerContact: contactInput.value.trim(),
+    crop: cropInput.value.trim(),
+    quantityTonnes: Number(qtyInput.value),
+    message: document.getElementById("req-message").value.trim(),
+  };
+
+  requestSubmit.disabled = true;
+  requestSubmit.classList.add("loading", "stamping");
+
+  try {
+    await postJSON(ENDPOINTS.contactRequest(reqTransporterId.value), payload);
+    showDrawerBanner(requestSuccess, "Request sent", "The transporter will see your crop, quantity and contact number. They'll reach out to confirm.");
+    requestForm.reset();
+  } catch (err) {
+    showDrawerBanner(requestError, "Couldn't send", err.message || "Something went wrong — please try again, or use Call / WhatsApp above.");
+  } finally {
+    requestSubmit.disabled = false;
+    requestSubmit.classList.remove("loading", "stamping");
+  }
+});
+
+/* -------------------------------- Init ----------------------------------- */
+loadTransporters();
+</script>
+</body>
+</html>
