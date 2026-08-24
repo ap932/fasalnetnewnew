@@ -1,0 +1,465 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Fasal-Net — Market prices &amp; crop suggestions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --board:#202B22;
+    --board-deep:#161F19;
+    --board-line:#3A4A3C;
+    --chalk-gold:#E8D3A0;
+    --chalk-gold-dim:#c7b384;
+    --chalk-green:#9DBE8C;
+    --paper:#F3EEE0;
+    --paper-dark:#e8e0c9;
+    --ink:#2B241B;
+    --ink-soft:#6b6250;
+    --stamp-red:#a8402e;
+    --stamp-green:#3f6b4a;
+    --error:#a8402e;
+    --radius:3px;
+    --font-display:'Bricolage Grotesque', system-ui, sans-serif;
+    --font-serif:'Source Serif 4', Georgia, serif;
+    --font-mono:'IBM Plex Mono', ui-monospace, monospace;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{ margin:0; background:var(--paper); font-family:var(--font-serif); color:var(--ink); -webkit-font-smoothing:antialiased; }
+  a{color:inherit;}
+  ::selection{background:var(--chalk-gold); color:var(--board-deep);}
+  :focus-visible{ outline:2px solid var(--stamp-green); outline-offset:2px; }
+  button{ font-family:inherit; }
+
+  /* ============ HEADER (board strip) ============ */
+  header.top{
+    background:
+      repeating-linear-gradient(0deg, var(--board-deep) 0px, var(--board-deep) 2px, var(--board) 2px, var(--board) 4px),
+      var(--board);
+    padding:26px 20px 56px;
+    border-bottom:8px solid var(--paper-dark);
+  }
+  .top-inner{ max-width:1080px; margin:0 auto; }
+  .brand-row{ display:flex; align-items:center; justify-content:space-between; margin-bottom:34px; flex-wrap:wrap; gap:12px;}
+  .brand{ display:flex; align-items:center; gap:10px; text-decoration:none; }
+  .brand-mark{width:26px;height:26px;flex-shrink:0;}
+  .brand-name{ font-family:var(--font-mono); letter-spacing:0.14em; font-size:12.5px; color:var(--chalk-gold-dim); text-transform:uppercase; }
+  .back-link{
+    font-family:var(--font-mono); font-size:12px; letter-spacing:0.04em; text-transform:uppercase;
+    color:var(--chalk-green); text-decoration:none; border-bottom:1px dashed var(--chalk-green); padding-bottom:2px;
+  }
+  .back-link:hover{ color:var(--chalk-gold); border-color:var(--chalk-gold); }
+
+  h1.headline{
+    font-family:var(--font-display); font-weight:800; color:var(--paper);
+    font-size:clamp(28px, 4.4vw, 44px); line-height:1.05; letter-spacing:-0.01em; margin:0 0 10px;
+  }
+  h1.headline .accent{ color:var(--chalk-gold); }
+  p.sub{ font-family:var(--font-serif); color:var(--chalk-green); font-size:clamp(14.5px, 1.8vw, 17px); max-width:56ch; line-height:1.55; margin:0; }
+
+  /* ============ MAIN ============ */
+  main{ max-width:1080px; margin:0 auto; padding:0 20px 90px; }
+
+  .panel-card{
+    background:#fff; border:1px solid var(--paper-dark); border-radius:2px;
+    padding:26px clamp(18px,4vw,34px) 30px; position:relative;
+    box-shadow:0 1px 0 var(--paper-dark), 0 18px 40px -30px rgba(43,36,27,0.4);
+    margin-top:-34px; margin-bottom:26px; z-index:2;
+  }
+  .panel-card::before{
+    content:""; position:absolute; top:0; left:0; right:0; height:6px;
+    background-image:repeating-linear-gradient(90deg, transparent 0 6px, var(--paper) 6px 14px);
+    background-size:20px 6px;
+  }
+  .panel-title{ font-family:var(--font-display); font-weight:800; font-size:21px; margin:6px 0 4px; }
+  .panel-desc{ color:var(--ink-soft); font-size:14px; margin:0 0 22px; max-width:60ch; }
+
+  .lookup-row{ display:grid; grid-template-columns:1.3fr 1fr auto; gap:12px; align-items:end; }
+  @media (max-width:640px){ .lookup-row{ grid-template-columns:1fr; } }
+  .field{ display:flex; flex-direction:column; gap:6px; }
+  label{ font-family:var(--font-mono); font-size:11px; letter-spacing:0.05em; text-transform:uppercase; color:var(--ink-soft); }
+  input[type="text"], input[type="number"], select{
+    font-family:var(--font-serif); font-size:15px; padding:10px 11px; border:1px solid #d8d0ba;
+    border-radius:var(--radius); background:#fffdf8; color:var(--ink); width:100%;
+  }
+  input:focus, select:focus{ border-color:var(--stamp-green); box-shadow:0 0 0 3px rgba(63,107,74,0.12); }
+
+  .go-btn{
+    font-family:var(--font-mono); font-weight:600; letter-spacing:0.05em; text-transform:uppercase; font-size:13px;
+    background:var(--paper); color:var(--stamp-green); border:2px solid var(--stamp-green); border-radius:4px;
+    padding:11px 22px; cursor:pointer; white-space:nowrap; display:flex; align-items:center; justify-content:center; gap:8px;
+  }
+  .go-btn:hover{ background:rgba(63,107,74,0.07); }
+  .go-btn:disabled{ opacity:0.55; cursor:progress; }
+  .go-btn .spinner{ display:none; width:12px;height:12px; border:2px solid var(--stamp-green); border-top-color:transparent; border-radius:50%; animation:spin 0.7s linear infinite; }
+  .go-btn.loading .spinner{ display:inline-block; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+
+  .hint{ font-size:12px; color:var(--ink-soft); margin-top:4px; }
+  .error-banner{
+    margin-top:16px; padding:12px 14px; border-radius:var(--radius); font-size:13.5px;
+    background:rgba(168,64,46,0.08); border:1px solid var(--error); color:var(--error); display:none;
+  }
+  .error-banner.show{ display:block; }
+
+  /* ---- price result ---- */
+  .price-result{ display:none; margin-top:26px; }
+  .price-result.show{ display:block; animation:fadein 0.3s ease both; }
+  @keyframes fadein{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
+
+  .price-hero{
+    display:flex; align-items:center; gap:22px; flex-wrap:wrap;
+    background:var(--board); border-radius:4px; padding:22px 24px; margin-bottom:20px;
+    position:relative; overflow:hidden;
+  }
+  .price-hero::after{
+    content:""; position:absolute; inset:0;
+    background-image:radial-gradient(circle, rgba(232,211,160,0.5) 1px, transparent 1px);
+    background-size:28px 28px; opacity:0.06; pointer-events:none;
+  }
+  .price-hero-main{ position:relative; z-index:1; }
+  .price-hero-label{ font-family:var(--font-mono); font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:var(--chalk-gold-dim); margin:0 0 6px; }
+  .price-hero-value{ font-family:var(--font-mono); font-size:clamp(30px,5vw,42px); font-weight:600; color:var(--chalk-gold); margin:0; }
+  .price-hero-unit{ font-size:15px; color:var(--chalk-green); font-weight:400; }
+  .price-hero-range{ position:relative; z-index:1; font-family:var(--font-mono); font-size:12.5px; color:var(--chalk-green); margin-left:auto; }
+  .confidence-tag{
+    font-family:var(--font-mono); font-size:10px; letter-spacing:0.06em; text-transform:uppercase;
+    background:rgba(157,190,140,0.15); color:var(--chalk-green); border:1px solid rgba(157,190,140,0.4);
+    padding:3px 8px; border-radius:2px; display:inline-block; margin-top:8px; position:relative; z-index:1;
+  }
+
+  table.market-table{ width:100%; border-collapse:collapse; font-size:14px; }
+  table.market-table caption{ text-align:left; font-family:var(--font-mono); font-size:11px; letter-spacing:0.05em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:10px; }
+  table.market-table th{
+    text-align:left; font-family:var(--font-mono); font-size:10.5px; letter-spacing:0.05em; text-transform:uppercase;
+    color:var(--ink-soft); border-bottom:1px solid var(--paper-dark); padding:8px 10px;
+  }
+  table.market-table td{ padding:10px 10px; border-bottom:1px dashed #e6ddc6; }
+  table.market-table tr.best td{ font-weight:600; color:var(--stamp-green); }
+  table.market-table td.price-cell{ font-family:var(--font-mono); }
+  .best-badge{
+    font-family:var(--font-mono); font-size:9.5px; letter-spacing:0.05em; text-transform:uppercase;
+    background:var(--stamp-green); color:#fff; padding:2px 6px; border-radius:2px; margin-left:8px;
+  }
+
+  /* ---- suggestions ---- */
+  .suggest-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(240px,1fr)); gap:16px; margin-top:22px; }
+  .suggest-grid.hidden{ display:none; }
+  .suggest-card{
+    border:1px solid var(--paper-dark); border-radius:2px; padding:18px; display:flex; flex-direction:column; gap:8px; position:relative;
+  }
+  .suggest-card::before{
+    content:""; position:absolute; top:0; left:0; right:0; height:4px;
+    background-image:repeating-linear-gradient(90deg, transparent 0 5px, var(--paper) 5px 12px);
+    background-size:17px 4px;
+  }
+  .suggest-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+  .suggest-name{ font-family:var(--font-display); font-weight:800; font-size:16.5px; margin:0; }
+  .fit-badge{
+    font-family:var(--font-mono); font-size:9.5px; letter-spacing:0.05em; text-transform:uppercase; padding:3px 7px; border-radius:2px; flex-shrink:0;
+  }
+  .fit-badge.high{ background:rgba(63,107,74,0.12); color:var(--stamp-green); }
+  .fit-badge.medium{ background:rgba(232,211,160,0.35); color:#8a6d2f; }
+  .suggest-price{ font-family:var(--font-mono); font-size:13.5px; color:var(--stamp-green); }
+  .suggest-reason{ font-size:13px; color:var(--ink-soft); line-height:1.5; margin:0; }
+  .suggest-tags{ display:flex; gap:6px; flex-wrap:wrap; margin-top:4px; }
+  .suggest-tag{
+    font-family:var(--font-mono); font-size:10px; letter-spacing:0.03em; text-transform:uppercase;
+    background:#fbf7ec; border:1px solid #e6ddc6; color:var(--ink-soft); padding:3px 7px; border-radius:2px;
+  }
+
+  .skeleton-row{ background:linear-gradient(100deg, #f3eee0 30%, #ece4cf 50%, #f3eee0 70%); background-size:200% 100%; animation:shimmer 1.3s infinite; border-radius:2px; height:64px; }
+  @keyframes shimmer{ from{ background-position:200% 0; } to{ background-position:-200% 0; } }
+  @media (prefers-reduced-motion:reduce){ .skeleton-row{ animation:none; } }
+
+  .disclaimer{
+    font-size:12px; color:var(--ink-soft); font-family:var(--font-mono); margin-top:18px;
+    border-top:1px dashed #ddd4bd; padding-top:14px;
+  }
+
+  footer{ text-align:center; padding:26px 20px 40px; color:var(--ink-soft); font-family:var(--font-mono); font-size:11.5px; }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand-row">
+      <a class="brand" href="home.html">
+        <svg class="brand-mark" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 2C10 6 7 8 7 12a5 5 0 0010 0c0-4-3-6-5-10z" stroke="#E8D3A0" stroke-width="1.3"/>
+          <path d="M12 22V12" stroke="#9DBE8C" stroke-width="1.3"/>
+        </svg>
+        <span class="brand-name">Fasal-Net</span>
+      </a>
+      <a class="back-link" href="transporters.html">Find a transporter →</a>
+    </div>
+    <h1 class="headline">Know the price <span class="accent">before the mandi does.</span></h1>
+    <p class="sub">Check today's predicted rate for your crop across nearby markets, and see which other crops would suit your field — before you decide what to plant or where to sell.</p>
+  </div>
+</header>
+
+<main>
+
+  <!-- ===================== PRICE LOOKUP ===================== -->
+  <section class="panel-card" id="priceCard">
+    <h2 class="panel-title">Check a crop's price</h2>
+    <p class="panel-desc">Pick a crop and your location — we'll show a predicted rate and how nearby mandis compare.</p>
+
+    <form id="priceForm">
+      <div class="lookup-row">
+        <div class="field">
+          <label for="price-crop">Crop</label>
+          <input type="text" id="price-crop" list="cropSuggestions" placeholder="e.g. Wheat" required />
+        </div>
+        <div class="field">
+          <label for="price-location">Location</label>
+          <input type="text" id="price-location" placeholder="e.g. Hisar, Haryana" required />
+        </div>
+        <button type="submit" class="go-btn" id="priceSubmit">
+          <span class="spinner"></span><span>Get rate</span>
+        </button>
+      </div>
+      <p class="hint">Prices are model-generated estimates, not a live mandi feed — always confirm before you commit to a sale.</p>
+    </form>
+
+    <div class="error-banner" id="priceError"></div>
+
+    <div class="price-result" id="priceResult">
+      <div class="price-hero">
+        <div class="price-hero-main">
+          <p class="price-hero-label" id="priceResultLabel">Predicted rate</p>
+          <p class="price-hero-value" id="priceResultValue">—</p>
+          <span class="confidence-tag" id="priceConfidence"></span>
+        </div>
+        <div class="price-hero-range" id="priceRange"></div>
+      </div>
+
+      <table class="market-table" id="marketTable">
+        <caption>Nearby markets</caption>
+        <thead>
+          <tr><th>Market</th><th>Distance</th><th>Price</th></tr>
+        </thead>
+        <tbody id="marketTableBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===================== CROP SUGGESTIONS ===================== -->
+  <section class="panel-card" id="suggestCard">
+    <h2 class="panel-title">What else could you grow here?</h2>
+    <p class="panel-desc">Based on your field's location and size, here's what tends to do well economically and environmentally.</p>
+
+    <form id="suggestForm">
+      <div class="lookup-row">
+        <div class="field">
+          <label for="suggest-location">Location</label>
+          <input type="text" id="suggest-location" placeholder="e.g. Barwala, Hisar" required />
+        </div>
+        <div class="field">
+          <label for="suggest-size">Field size (acres)</label>
+          <input type="number" id="suggest-size" min="0" step="0.1" placeholder="e.g. 4.5" required />
+        </div>
+        <button type="submit" class="go-btn" id="suggestSubmit">
+          <span class="spinner"></span><span>Suggest crops</span>
+        </button>
+      </div>
+    </form>
+
+    <div class="error-banner" id="suggestError"></div>
+
+    <div class="suggest-grid hidden" id="suggestGrid"></div>
+
+    <p class="disclaimer">Suggestions weigh local water availability, typical season, and recent demand — they're a starting point for your own judgement, not a guarantee.</p>
+  </section>
+
+</main>
+
+<footer>Fasal-Net · formal transactions, standardised units, verified rates</footer>
+
+<datalist id="cropSuggestions">
+  <option value="Wheat"></option>
+  <option value="Rice"></option>
+  <option value="Maize"></option>
+  <option value="Bajra"></option>
+  <option value="Jowar"></option>
+  <option value="Sugarcane"></option>
+  <option value="Cotton"></option>
+  <option value="Soybean"></option>
+  <option value="Mustard"></option>
+  <option value="Gram"></option>
+  <option value="Groundnut"></option>
+  <option value="Tur (Arhar)"></option>
+  <option value="Barley"></option>
+</datalist>
+
+<script>
+/* =========================================================================
+   BACKEND CONFIG — same pattern as the other pages
+   ========================================================================= */
+const API_BASE_URL = "/api";
+const DEMO_MODE = false; // real backend is wired up
+
+const ENDPOINTS = {
+  pricePrediction: (crop, location) =>
+    `${API_BASE_URL}/price-prediction?crop=${encodeURIComponent(crop)}&location=${encodeURIComponent(location)}`,
+  cropSuggestions: (location, sizeAcres) =>
+    `${API_BASE_URL}/crop-suggestions?location=${encodeURIComponent(location)}&fieldSize=${encodeURIComponent(sizeAcres)}`,
+};
+
+/* demo fallbacks, used only if DEMO_MODE is true */
+function demoPricePrediction(crop){
+  const base = 1800 + (crop.length * 37) % 900;
+  return {
+    crop, unit: "quintal", predictedPrice: base, confidence: "Medium confidence",
+    range: { low: Math.round(base * 0.92), high: Math.round(base * 1.08) },
+    nearbyMarkets: [
+      { market: "Hisar mandi", distanceKm: 6, price: base + 20 },
+      { market: "Barwala mandi", distanceKm: 14, price: base - 15 },
+      { market: "Sirsa mandi", distanceKm: 41, price: base + 55 },
+    ],
+  };
+}
+function demoCropSuggestions(){
+  return [
+    { crop: "Mustard", fit: "high", estPricePerQuintal: 5400, reason: "Low water need, fits your region's rabi season, steady recent demand.", tags: ["Low water", "Rabi season"] },
+    { crop: "Gram", fit: "high", estPricePerQuintal: 5100, reason: "Improves soil nitrogen, good rotation partner, reliable local buyers.", tags: ["Soil health", "Rotation crop"] },
+    { crop: "Bajra", fit: "medium", estPricePerQuintal: 2200, reason: "Drought-tolerant option if rainfall has been unpredictable this season.", tags: ["Drought tolerant"] },
+  ];
+}
+
+/* ---------------------------- API helpers ------------------------------ */
+async function getJSON(url, demoFn, demoArgs=[]){
+  if (DEMO_MODE){
+    await new Promise(r => setTimeout(r, 800));
+    return demoFn(...demoArgs);
+  }
+  const res = await fetch(url);
+  let data = null;
+  try { data = await res.json(); } catch(e) {}
+  if (!res.ok){
+    const msg = (data && (data.message || data.error)) || `Server responded ${res.status}`;
+    throw new Error(msg);
+  }
+  return data;
+}
+
+/* ------------------------------ Price lookup ------------------------------ */
+const priceForm = document.getElementById("priceForm");
+const priceSubmit = document.getElementById("priceSubmit");
+const priceError = document.getElementById("priceError");
+const priceResult = document.getElementById("priceResult");
+const priceResultValue = document.getElementById("priceResultValue");
+const priceResultLabel = document.getElementById("priceResultLabel");
+const priceConfidence = document.getElementById("priceConfidence");
+const priceRange = document.getElementById("priceRange");
+const marketTableBody = document.getElementById("marketTableBody");
+
+priceForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  priceError.classList.remove("show");
+  priceResult.classList.remove("show");
+
+  const crop = document.getElementById("price-crop").value.trim();
+  const location = document.getElementById("price-location").value.trim();
+  if (!crop || !location){
+    priceError.textContent = "Enter both a crop and a location.";
+    priceError.classList.add("show");
+    return;
+  }
+
+  priceSubmit.disabled = true;
+  priceSubmit.classList.add("loading");
+
+  try {
+    const data = await getJSON(ENDPOINTS.pricePrediction(crop, location), demoPricePrediction, [crop]);
+
+    priceResultLabel.textContent = `Predicted rate — ${data.crop}`;
+    priceResultValue.innerHTML = `₹${data.predictedPrice.toLocaleString("en-IN")} <span class="price-hero-unit">/ ${data.unit}</span>`;
+    priceConfidence.textContent = data.confidence || "";
+    priceRange.textContent = data.range ? `Typical range: ₹${data.range.low.toLocaleString("en-IN")}–₹${data.range.high.toLocaleString("en-IN")}` : "";
+
+    const markets = (data.nearbyMarkets || []).slice().sort((a,b) => b.price - a.price);
+    marketTableBody.innerHTML = markets.map((m, i) => `
+      <tr class="${i === 0 ? 'best' : ''}">
+        <td>${escapeHtml(m.market)}${i === 0 ? '<span class="best-badge">Best</span>' : ''}</td>
+        <td>${m.distanceKm} km</td>
+        <td class="price-cell">₹${m.price.toLocaleString("en-IN")}</td>
+      </tr>
+    `).join("");
+
+    priceResult.classList.add("show");
+  } catch (err) {
+    priceError.textContent = err.message || "Couldn't fetch a price right now — please try again.";
+    priceError.classList.add("show");
+  } finally {
+    priceSubmit.disabled = false;
+    priceSubmit.classList.remove("loading");
+  }
+});
+
+/* --------------------------- Crop suggestions ----------------------------- */
+const suggestForm = document.getElementById("suggestForm");
+const suggestSubmit = document.getElementById("suggestSubmit");
+const suggestError = document.getElementById("suggestError");
+const suggestGrid = document.getElementById("suggestGrid");
+
+suggestForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  suggestError.classList.remove("show");
+  suggestGrid.classList.add("hidden");
+
+  const location = document.getElementById("suggest-location").value.trim();
+  const size = document.getElementById("suggest-size").value;
+  if (!location || !size){
+    suggestError.textContent = "Enter both a location and a field size.";
+    suggestError.classList.add("show");
+    return;
+  }
+
+  suggestSubmit.disabled = true;
+  suggestSubmit.classList.add("loading");
+  suggestGrid.innerHTML = `<div class="skeleton-row"></div><div class="skeleton-row"></div><div class="skeleton-row"></div>`;
+  suggestGrid.classList.remove("hidden");
+
+  try {
+    const suggestions = await getJSON(ENDPOINTS.cropSuggestions(location, size), demoCropSuggestions);
+
+    if (!suggestions.length){
+      suggestGrid.innerHTML = `<p class="hint">No suggestions for this combination yet — try a nearby town or a different field size.</p>`;
+    } else {
+      suggestGrid.innerHTML = suggestions.map(s => `
+        <div class="suggest-card">
+          <div class="suggest-top">
+            <h3 class="suggest-name">${escapeHtml(s.crop)}</h3>
+            <span class="fit-badge ${s.fit === 'high' ? 'high' : 'medium'}">${s.fit === 'high' ? 'Strong fit' : 'Worth trying'}</span>
+          </div>
+          <span class="suggest-price">~₹${s.estPricePerQuintal.toLocaleString("en-IN")} / quintal</span>
+          <p class="suggest-reason">${escapeHtml(s.reason)}</p>
+          <div class="suggest-tags">${(s.tags || []).map(t => `<span class="suggest-tag">${escapeHtml(t)}</span>`).join("")}</div>
+        </div>
+      `).join("");
+    }
+  } catch (err) {
+    suggestGrid.classList.add("hidden");
+    suggestError.textContent = err.message || "Couldn't fetch suggestions right now — please try again.";
+    suggestError.classList.add("show");
+  } finally {
+    suggestSubmit.disabled = false;
+    suggestSubmit.classList.remove("loading");
+  }
+});
+
+function escapeHtml(str){
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+</script>
+</body>
+</html>
